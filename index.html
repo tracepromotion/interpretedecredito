@@ -1,0 +1,332 @@
+<!DOCTYPE html><html lang='pt-BR'><head><meta charset='utf-8'>
+<title>Interprete Crédito Tracecom PRO+</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+body{background:#0b0b0b;color:#fff;font-family:Segoe UI;margin:0}
+header{background:#111;padding:15px;text-align:center}h1{color:#d4af37}
+.container{max-width:1300px;margin:auto;padding:20px}
+.card{background:#151515;border:1px solid #333;border-radius:12px;padding:15px;margin-bottom:15px}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:15px;
+}
+.grid div{
+    background:#1c1c1c;
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #333;
+}
+.help{
+    width:22px;
+    height:22px;
+
+    border:none;
+    border-radius:50%;
+
+    background:#d4af37;
+    color:#000;
+
+    font-weight:bold;
+    cursor:pointer;
+
+    margin-left:5px;
+}
+.close{float:right;background:#c0392b;color:#fff;border:none;border-radius:50%;width:32px;height:32px}
+.result{text-align:center;font-size:42px;font-weight:bold}
+.upload-area{
+    min-height:180px;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    border:2px dashed #d4af37;
+
+    transition:.3s;
+}
+
+.upload-area:hover{
+    border-color:#f1c40f;
+    box-shadow:0 0 20px rgba(212,175,55,.25);
+}
+</style></head><body>
+<header><h1>🏆 Intérprete de Crédito - Tracecom</h1></header>
+<div class='container'>
+<div class='card'><h3>Régua</h3>
+<div class='grid'>
+<div>Score Min <button class='help' onclick="h('score')">?</button><br><input id='score' value='450'></div>
+<div>Máx Débitos <button class='help' onclick="h('deb')">?</button><br><input id='maxdeb' value='3'></div>
+<div>Peso Internet <button class='help' onclick="h('int')">?</button><br><input id='pi' value='35'></div>
+<div>Peso Essenciais <button class='help' onclick="h('ess')">?</button><br><input id='pe' value='25'></div>
+<div>Peso Bancos <button class='help' onclick="h('ban')">?</button><br><input id='pb' value='15'></div>
+<div>Peso CPF <button class='help' onclick="h('cpf')">?</button><br><input id='pcpf' value='35'></div>
+</div></div>
+<div class='card upload-area'>
+    <input type='file' id='pdfFile' accept='.pdf'>
+</div>
+<div id='report' class='card'>Aguardando PDF...</div>
+</div>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+function h(t){
+
+const x={
+
+score:
+"Score mínimo aceito pela régua. Quanto menor o score do cliente, maior o risco estimado de inadimplência.",
+
+deb:
+"Quantidade máxima de registros de débito considerada saudável. Acima deste número o risco aumenta significativamente.",
+
+int:
+"Peso aplicado quando forem encontrados débitos em operadoras de internet ou telefonia. Possui peso elevado por ser um serviço semelhante ao da Tracecom.",
+
+ess:
+"Peso aplicado para dívidas em serviços essenciais, como energia e água. Indica possível dificuldade na manutenção de compromissos recorrentes.",
+
+ban:
+"Peso aplicado para débitos em bancos, cartões de crédito e instituições financeiras. Quanto maior esse valor, maior o impacto dessas ocorrências na análise.",
+
+cpf:
+"Peso aplicado quando o CPF apresentar situação irregular ou pendência cadastral junto aos órgãos oficiais."
+
+};
+
+alert(x[t]);
+
+}
+function resetR(){document.getElementById('report').innerHTML='Aguardando PDF...';document.getElementById('pdfFile').value='';}
+async function txt(file){const d=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:d}).promise;let t='';for(let i=1;i<=pdf.numPages;i++){let p=await pdf.getPage(i);let c=await p.getTextContent();t+=c.items.map(v=>v.str).join(' ')+' ';}return t;}
+function m(r,x){let a=x.match(r);return a?a[1].trim():'';}
+function classificarCredor(nome){
+
+    nome = nome.toUpperCase();
+
+    const categorias = {
+
+        telecom:[
+            'CLARO',
+            'TELEFONICA BRASIL',
+            'MOVEL',
+            'TELECOM',
+            'VIVO',
+            'TIM',
+            'OI',
+            'ALGAR',
+            'DESKTOP',
+            'UNIFIQUE',
+            'BRISANET'
+        ],
+
+        energia:[
+            'LIGHT',
+            'NATURGY',
+            'GAS',
+            'ENEL',
+            'CEDAE',
+            'AGUAS DO RIO',
+            'AMPLA',
+            'COPASA',
+            'SABESP'
+        ],
+
+        financeiro:[
+            'BANCO',
+            'SANTANDER',
+            'ITAU',
+            'ITAÚ',
+            'BRADESCO',
+            'NUBANK',
+            'BANK',
+            'CARTAO',
+            'NU',
+            'INTER',
+            'C6',
+            'MERCADO PAGO',
+            'CREDSYSTEM',
+            'BRASIL CARD',
+            'BV',
+            'PAN'
+        ],
+
+        varejo:[
+            'C&A',
+            'RENNER',
+            'SEMI',
+            'JOIAS',
+            'VESTU',
+            'IPANEMA',
+            'RIACHUELO',
+            'MAGAZINE',
+            'CASAS BAHIA',
+            'PONTO',
+            'AMERICANAS'
+        ]
+
+    };
+
+    if(
+    categorias.telecom.some(
+        x => new RegExp('\\b' + x + '\\b').test(nome)
+    )
+)
+    return {
+        categoria:'Telecomunicações',
+        peso:parseInt(document.getElementById('pi').value) || 35
+    };
+
+if(
+    categorias.energia.some(
+        x => new RegExp('\\b' + x + '\\b').test(nome)
+    )
+)
+    return {
+        categoria:'Energia e Utilidades',
+        peso:parseInt(document.getElementById('pe').value) || 25
+    };
+
+if(
+    categorias.financeiro.some(
+        x => new RegExp('\\b' + x + '\\b').test(nome)
+    )
+)
+    return {
+        categoria:'Crédito e Cartões',
+        peso:parseInt(document.getElementById('pb').value) || 15
+    };
+
+if(
+    categorias.varejo.some(
+        x => new RegExp('\\b' + x + '\\b').test(nome)
+    )
+)
+    return {
+        categoria:'Varejo',
+        peso:5
+    };
+
+return {
+    categoria:'Outros',
+    peso:3
+};
+}
+
+function gerar(t){
+let nome=m(/Nome Completo\s+([A-ZÀ-Ú\s]+?)\s+Documento/i,t)||'Não localizado';
+let score=parseInt(m(/Pontuação\s+(\d+)/i,t)||0);
+let valor=m(/Débitos Registrados\s+R\$\s*([\d\.,]+)/i,t)||'0';
+let debs=(t.match(/Condição\s+Ativo/gi)||[]).length;
+let empresas = [];
+
+const credorRegex =
+/Credor\s+([A-Z0-9À-Ú&\/\-\.\s]+?)\s+Data da Inclusão/gi;
+
+let match;
+
+while((match = credorRegex.exec(t)) !== null){
+
+    const credor = match[1]
+        .replace(/\s+/g,' ')
+        .trim();
+
+    if(
+        credor &&
+        !empresas.includes(credor)
+    ){
+        empresas.push(credor);
+    }
+}
+let seg = [];
+let riscoCredores = 0;
+let detalhesCredores = [];
+
+empresas.forEach(emp=>{
+
+    const info = classificarCredor(emp);
+
+    riscoCredores += info.peso;
+
+    if(!seg.includes(info.categoria)){
+        seg.push(info.categoria);
+    }
+
+    detalhesCredores.push(
+        `• ${emp} (${info.categoria})`
+    );
+
+}); // FECHAMENTO OBRIGATÓRIO
+
+let risco=0;
+// Protestos
+let protesto = false;
+
+const protestoMatch =
+t.match(/Registros de Protestos\s+(\d+)/i);
+
+if(
+    protestoMatch &&
+    parseInt(protestoMatch[1]) > 0
+){
+    protesto = true;
+}
+if(
+    debs > 0 ||
+    empresas.length > 0 ||
+    protesto
+){
+
+    if(score<250)risco+=20;
+    else if(score<350)risco+=15;
+    else if(score<450)risco+=10;
+    else if(score<550)risco+=5;
+
+}
+
+// Quantidade de débitos
+if(debs>=5)risco+=35;
+else if(debs>=3)risco+=20;
+else risco+=debs*5;
+
+// CPF
+if(/Pendente na Receita Federal/i.test(t))
+    risco+=35;
+
+
+
+if(protesto)
+    risco+=40;
+
+// Credores encontrados
+risco += riscoCredores;
+
+let cls='APROVADO',cor='#2ecc71';
+
+if(risco>=90){
+    cls='REPROVADO';
+    cor='#e74c3c';
+}
+else if(risco>=61){
+    cls='APROVAÇÃO CONDICIONAL';
+    cor='#e67e22';
+}
+else if(risco>=31){
+    cls='APROVADO COM ATENÇÃO';
+    cor='#f1c40f';
+}
+
+document.getElementById('report').innerHTML=`<button class='close' onclick='resetR()'>✕</button>
+<h2>📋 Dados do Cliente</h2><p><b>Nome:</b> ${nome}</p>
+<h2>📊 Resumo Financeiro</h2>
+<p><b>Score:</b> ${score}</p><p><b>Registros de Débito:</b> ${debs}</p><p><b>Valor Total:</b> R$ ${valor}</p>
+<h2>🏦 Empresas Encontradas</h2>
+<p>${detalhesCredores.join('<br>') || 'Nenhuma identificada'}</p>
+<h2>📂 Segmentos Encontrados</h2><p>${seg.join(', ')||'Nenhum identificado'}</p>
+<h2>🧠 Interpretação Inteligente</h2>
+<p>Foram identificados ${debs} registros de débito. Os principais segmentos encontrados foram: ${seg.join(', ')||'não identificados'}. ${seg.includes('Telecomunicações')?'Débitos em telecomunicações possuem peso elevado por serem similares ao serviço da Tracecom. ':''}${seg.includes('Energia')?'Débitos em serviços essenciais elevam a criticidade da análise. ':''}Risco estimado: ${risco}%.</p>
+<div class='result' style='color:${cor}'>${cls}</div>`;
+}
+document.getElementById('pdfFile').addEventListener('change',async e=>{
+let t=await txt(e.target.files[0]);gerar(t);
+});
+</script></body></html>
